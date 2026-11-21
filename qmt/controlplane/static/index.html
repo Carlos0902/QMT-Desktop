@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QMT 控制台</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --line:#2a313c; --ink:#e6edf3;
+    --muted:#9aa7b4; --accent:#17a7a2; --accent2:#3b82f6; --primary:#12324f;
+    --up:#2ea043; --down:#e5534b; --warn:#e8943a; --range:#8b93a1;
+    --fresh:#2ea043; --stale:#e8943a; --expired:#e5534b;
+    --radius:10px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif}
+  header{display:flex;align-items:center;gap:14px;padding:12px 18px;background:linear-gradient(90deg,var(--primary),#0e1116);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.5px}
+  header .sub{color:var(--muted);font-size:12px}
+  header .status{margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--down);margin-right:5px;vertical-align:middle}
+  .dot.ok{background:var(--up)}
+  nav.tabs{display:flex;gap:2px;padding:0 18px;background:var(--panel);border-bottom:1px solid var(--line)}
+  nav.tabs button{background:none;border:none;color:var(--muted);padding:11px 16px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent}
+  nav.tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
+  main{padding:18px;max-width:1200px;margin:0 auto}
+  .tab{display:none}.tab.active{display:block}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+  label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+  input,select,button.act{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  button.act{background:var(--accent);border-color:var(--accent);color:#04211f;font-weight:600;cursor:pointer}
+  button.act:hover{filter:brightness(1.08)}
+  button.ghost{background:var(--panel2);color:var(--ink);cursor:pointer}
+  .autoc{position:relative}
+  .autoc .list{position:absolute;top:100%;left:0;right:0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;margin-top:2px;max-height:260px;overflow:auto;z-index:5;display:none}
+  .autoc .list div{padding:7px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)}
+  .autoc .list div:hover{background:var(--panel)}
+  .autoc .list .code{font-family:var(--mono);color:var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+  .card h3{margin:0 0 10px;font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px dotted var(--line);font-size:13px}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--muted)} .kv .v{font-family:var(--mono);text-align:right}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;font-family:var(--mono)}
+  .pill.up{background:rgba(46,160,67,.15);color:var(--up)} .pill.down{background:rgba(229,83,75,.15);color:var(--down)}
+  .pill.range{background:rgba(139,147,161,.15);color:var(--range)}
+  .pill.high{background:rgba(232,148,58,.15);color:var(--warn)} .pill.low{background:rgba(46,160,67,.15);color:var(--up)}
+  .pill.normal{background:rgba(59,130,246,.15);color:var(--accent2)}
+  .tag{display:inline-block;padding:1px 7px;border-radius:5px;font-size:11px;font-family:var(--mono);margin:1px}
+  .tag.fresh{background:rgba(46,160,67,.15);color:var(--fresh)} .tag.stale{background:rgba(232,148,58,.15);color:var(--stale)} .tag.expired{background:rgba(229,83,75,.15);color:var(--expired)}
+  .bar{position:relative;height:16px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-top:3px}
+  .bar .rng{position:absolute;top:0;bottom:0;background:rgba(23,167,162,.35)}
+  .bar .pt{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--accent)}
+  .gate{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px dotted var(--line)}
+  .gate .s{width:9px;height:9px;border-radius:50%} .gate .s.pass{background:var(--up)} .gate .s.fail{background:var(--down)} .gate .s.degrade{background:var(--warn)}
+  .expl p{margin:6px 0}.expl .lbl{color:var(--accent);font-weight:600;font-size:12px}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12px;font-family:var(--mono);max-height:340px}
+  .muted{color:var(--muted)} .err{color:var(--down)} .small{font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.4px}
+  th.sortable{cursor:pointer;user-select:none}th.sortable:hover{color:var(--ink)}th.sortable .ind{color:var(--accent);margin-left:3px}
+  td.num{font-family:var(--mono);text-align:right}
+  .cfg-group{margin-bottom:10px}.cfg-group h4{margin:6px 0;font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .cfg-field{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+  .cfg-field .path{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .cfg-field input{width:110px;text-align:right;padding:4px 7px}
+  canvas{width:100%;height:280px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}
+  .legend{display:flex;gap:14px;font-size:12px;margin:8px 0}
+  .legend span{display:flex;align-items:center;gap:5px}.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .doc{white-space:pre-wrap;font-family:var(--mono);font-size:12px;line-height:1.5;max-height:70vh;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px}
+  .badge{display:inline-block;padding:1px 8px;border-radius:5px;font-size:11px;font-family:var(--mono);margin:0 4px 2px 0}
+  .badge.done{background:rgba(46,160,67,.15);color:var(--up)} .badge.partial{background:rgba(232,148,58,.15);color:var(--warn)} .badge.deferred{background:rgba(139,147,161,.18);color:var(--range)}
+  .badge.method{background:rgba(23,167,162,.15);color:var(--accent)} .badge.mode{background:rgba(59,130,246,.15);color:var(--accent2)}
+  .mdl-cat{margin:16px 0 8px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:5px}
+  .mdl-cat .n{color:var(--accent);margin-left:6px}
+  .chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:16px;font-size:12px;cursor:pointer;font-family:var(--mono)}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:#04211f;font-weight:600}
+  .mdl-card h3{color:var(--ink);text-transform:none;letter-spacing:0;font-size:14px;margin-bottom:3px}
+  .mdl-card .en{color:var(--muted);font-size:11px;font-weight:400;margin-left:6px}
+  .mdl-card .ref{font-family:var(--mono);font-size:11px;color:var(--muted);margin:6px 0}
+  .mdl-card .params{margin-top:8px}
+  .mdl-card .params summary{cursor:pointer;color:var(--accent);font-size:12px}
+  .mdl-card .cand{margin-top:7px;font-size:12px;color:var(--warn)}
+</style>
+</head>
+<body>
+<header>
+  <h1>QMT 控制台</h1>
+  <span class="sub">场外权益基金分析 · 控制 / 调试 / 调参</span>
+  <span class="status"><span id="dot" class="dot"></span><span id="statusTxt">连接中…</span></span>
+</header>
+<nav class="tabs">
+  <button data-tab="analyze" class="active">分析 Analyze</button>
+  <button data-tab="position">持仓 Position</button>
+  <button data-tab="refine">调参 Refine</button>
+  <button data-tab="backtest">回测 Backtest</button>
+  <button data-tab="training">训练 Training</button>
+  <button data-tab="models">模型 Models</button>
+  <button data-tab="docs">使用说明</button>
+</nav>
+<main>
+  <section id="analyze" class="tab active">
+    <div class="row">
+      <div class="autoc" style="min-width:280px">
+        <label>基金（代码 / 名称）</label>
+        <input id="fund" placeholder="如 011133 或 沪深300" autocomplete="off">
+        <div class="list" id="fundList"></div>
+      </div>
+      <div><label>决策时点 as_of</label><input id="asof" type="date" ></div>
+      <div><button class="act" id="runBtn">运行分析</button></div>
+      <div class="muted small" id="ingestNote"></div>
+    </div>
+    <div id="analyzeOut"></div>
+  </section>
+
+  <section id="position" class="tab">
+    <div class="card">
+      <h3>我的持仓 My Position</h3>
+      <div class="row" style="align-items:flex-end;margin-bottom:6px">
+        <div><label>可用资金 / 现金 ¥</label><input id="posCash" type="number" min="0" step="1000" placeholder="0" style="width:140px"></div>
+        <div><label>最低保留现金 ¥</label><input id="posReserve" type="number" min="0" step="1000" value="0" style="width:120px"></div>
+        <div style="padding-bottom:8px"><label style="text-transform:none">&nbsp;</label>
+          <label style="text-transform:none;color:var(--ink);font-size:13px;cursor:pointer"><input type="checkbox" id="posFull" style="width:auto;vertical-align:middle"> 尽量用完这笔现金</label></div>
+        <div class="muted small">可只填可用资金、不填任何持仓——系统会给出市场环境与建仓提示（本页数据仅存于本地浏览器）。</div>
+      </div>
+      <div id="posEmpty" class="muted small" style="margin-bottom:8px">尚未录入基金持仓——可添加你当前持有的基金，或仅填写上方可用资金。</div>
+      <table id="posTable" style="display:none"><thead><tr>
+        <th class="sortable" data-sort="fund_code">基金</th>
+        <th class="sortable" data-sort="market_value">金额 ¥</th>
+        <th class="sortable" data-sort="buy_date">买入日期</th>
+        <th class="sortable" data-sort="hold_days">持有天数</th>
+        <th class="sortable" data-sort="weight">权重</th>
+        <th></th></tr></thead><tbody id="posBody"></tbody></table>
+      <div class="row" style="margin-top:12px;align-items:flex-end">
+        <div class="autoc" style="min-width:240px"><label>添加基金（代码 / 名称）</label>
+          <input id="posFund" placeholder="如 011133 或 沪深300" autocomplete="off"><div class="list" id="posFundList"></div></div>
+        <div><label>金额 ¥</label><input id="posMv" type="number" min="0" step="100" placeholder="10000" style="width:110px"></div>
+        <div><label>买入日期</label><input id="posBuy" type="date" style="width:150px"></div>
+        <div><button class="act" id="posAdd">添加</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>适当性 / 生成建议</h3>
+      <div class="row" style="align-items:flex-end">
+        <div><label>风险承受 risk tolerance</label>
+          <select id="posRisk"><option>C1</option><option>C2</option><option selected>C3</option><option>C4</option><option>C5</option></select></div>
+        <div><label>投资期限（天）</label><input id="posHorizon" type="number" min="0" value="365" style="width:100px"></div>
+        <div><button class="act" id="posGen">生成建议 Generate Suggestions</button></div>
+      </div>
+      <div class="muted small" style="margin-top:6px">每天点击『生成建议』即可获得<b>基于最新数据</b>的调仓建议（决策时点自动取当前，穿透真实集中度 + 风险预算 + 逐只行动）。</div>
+    </div>
+    <div id="posOut"></div>
+  </section>
+
+  <section id="refine" class="tab">
+    <div class="row"><div class="muted small">编辑阈值后保存会立即用上一次分析重跑，直观看到调参效果。可调项来自 <code>qmt.config.CONFIG</code>。</div>
+      <button class="ghost act" id="reloadCfg" style="margin-left:auto">重新载入</button></div>
+    <div id="cfgOut" class="grid"></div>
+  </section>
+
+  <section id="backtest" class="tab">
+    <div class="row">
+      <div><label>基金代码</label><input id="btFund" placeholder="011133" value="011133"></div>
+      <div><label>开始</label><input id="btStart" type="date" value="2023-01-01"></div>
+      <div><label>结束</label><input id="btEnd" type="date" value="2024-12-31"></div>
+      <div><label>策略</label><select id="btStrat">
+        <option>baseline</option><option>ma_cross</option><option>trend</option><option>vol_control</option><option>buy_and_hold</option><option>fixed_sip</option>
+      </select></div>
+      <div><button class="act" id="btRun">运行回测</button></div>
+    </div>
+    <div id="btOut"></div>
+  </section>
+
+  <section id="training" class="tab">
+    <div class="row"><div class="muted small" style="max-width:860px">
+      <b>训练 = 走步式参数搜索</b>（非神经网络训练）。方法与训练目标<b>由系统自动选择</b>：始终面向<b>整个市场</b>（沪深300 大盘指数）训练<b>大盘择时模型</b>——只有面向全市场，学到的才是分层模型架构里的『大盘规律』，而不是某只基金里混杂的大盘/行业/个股信号。在<b>训练窗口</b>用点位、净费口径的回测目标评分，选优后在<b>严格更晚的验证窗口</b>做样本外确认（<code>train_end &lt; valid_start</code>，防过拟合、防偷看未来）。
+    </div></div>
+    <div id="trModelCard"></div>
+    <div class="row" style="margin-bottom:4px">
+      <div><button class="ghost act" id="trLayers">诊断三层模型架构</button></div>
+      <div class="muted small" style="max-width:640px;padding-top:8px">
+        分别评估<b>大盘层 / 行业层 / 个股层</b>，每层都与<b>它自己的朴素基线</b>对比；所有技能结论都经过重叠修正的显著性检验（跑不赢朴素基线＝未证明增量价值）。首次约需 30 秒。
+      </div>
+    </div>
+    <div id="trLayerOut"></div>
+    <div class="row" style="margin-bottom:4px">
+      <div><button class="ghost act" id="trCurves">预测 vs 真实 曲线</button></div>
+      <div class="muted small" style="max-width:640px;padding-top:8px">
+        画出<b>大盘层</b>（各周期：指数前瞻收益分布 vs 已实现）与<b>行业层</b>（自动取相关性最高/最低的行业：相对大盘偏离的预测 vs 已实现）的点位曲线，直观看训练后的差异。
+      </div>
+    </div>
+    <div id="trCurveOut"></div>
+    <div class="row" style="margin-bottom:4px">
+      <div><button class="ghost act" id="trBench">特征重要性 / 模型基准</button></div>
+      <div class="muted small" style="max-width:640px;padding-top:8px">
+        走步式样本外基准：模型阶梯（无条件→规则→Ridge→梯度提升）在<b>方向</b>与<b>波动</b>上的表现，以及逐特征置换重要性。用于回答『特征是否真的有用、要不要上更复杂的模型』——诚实口径（重叠修正、仅样本外）。
+      </div>
+    </div>
+    <div id="trBenchOut"></div>
+    <div class="row" style="margin-bottom:4px">
+      <div><button class="ghost act" id="trTsBench">时间序列模型大比拼（12 模型）</button></div>
+      <div class="muted small" style="max-width:640px;padding-top:8px">
+        更广的时序模型阶梯（经典 Box–Jenkins/指数平滑/Theta + Ridge/ElasticNet/GBM + 单配置 MLP/LSTM，24 年 CSI300，逐决策 PIT、gap=2、重叠修正）对上一个问题：<b>有没有模型能跑赢随机游走？</b>离线产物（约 14 分钟一跑），此处只读展示 <code>artifacts/ts_model_bench.json</code>。
+      </div>
+    </div>
+    <div id="trTsBenchOut"></div>
+    <div class="row">
+      <div><label>开始月份</label><input id="trStartMonth" type="month" value="2021-01"></div>
+      <div><label>结束月份</label><input id="trEndMonth" type="month" value="2024-12"></div>
+      <div style="display:flex;align-items:center;gap:6px;padding-bottom:6px"><input type="checkbox" id="trIngest" checked style="width:auto"><label style="margin:0">缺数据时入库</label></div>
+      <div><button class="act" id="trRun">开始训练</button> <button class="ghost act" id="trStop" style="display:none">停止</button></div>
+    </div>
+    <div id="trSplit" class="muted small" style="margin:-4px 0 12px"></div>
+    <div id="trProgWrap" style="display:none;margin-bottom:12px">
+      <div class="bar" style="height:10px"><div class="rng" id="trProg" style="left:0;width:0%"></div></div>
+      <div class="muted small" id="trStatus" style="margin-top:4px"></div>
+    </div>
+    <div id="trOut"><div class="muted">点击"开始训练"，系统将面向整个市场自动训练大盘择时模型。</div></div>
+    <div id="trHistory"></div>
+  </section>
+
+  <section id="models" class="tab">
+    <div class="row" style="justify-content:space-between">
+      <div class="muted small">系统的分析『模型』目录：每个流水线阶段的方法（<b>基线优先</b>，候选延后）、其种类、状态与<b>实时参数</b>（来自 <code>qmt.config.CONFIG</code>）。</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
+        <input id="mdlSearch" placeholder="搜索名称 / 说明…" style="min-width:200px">
+        <button class="ghost act" id="mdlReload">重新载入</button>
+      </div>
+    </div>
+    <div id="mdlChips" class="row" style="gap:6px"></div>
+    <div id="mdlOut"><div class="muted">载入中…</div></div>
+  </section>
+
+  <section id="docs" class="tab">
+    <div class="row"><button class="ghost act" data-doc="decisions">基金分析</button><button class="ghost act" data-doc="traceability">数据与本地存储</button></div>
+    <div id="docOut" class="doc muted">选择一个文档…</div>
+  </section>
+</main>
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const API=(p,o)=>fetch('/api'+p,o).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw (j.detail||j);return j;});
+const pct=x=>x==null?'—':(100*x).toFixed(1)+'%';
+const f2=x=>x==null?'—':(+x).toFixed(3);
+let lastAnalyze=null;
+const today = new Date();
+$('#asof').value = [today.getFullYear(), String(today.getMonth()+1).padStart(2,'0'), String(today.getDate()).padStart(2,'0')].join('-');
+
+$$('nav.tabs button').forEach(b=>b.onclick=()=>{
+  $$('nav.tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  $$('.tab').forEach(t=>t.classList.remove('active'));$('#'+b.dataset.tab).classList.add('active');
+  if(b.dataset.tab==='refine'&&!$('#cfgOut').childElementCount)loadConfig();
+  if(b.dataset.tab==='models'&&!mdlData)loadModels();
+  if(b.dataset.tab==='training'&&!trAuto)loadTuningModels();
+  if(b.dataset.tab==='position')renderPosition();
+});
+
+API('/health').then(h=>{$('#dot').classList.add('ok');$('#statusTxt').textContent=(h.service||'qmt')+' '+(h.version||'');})
+  .catch(()=>{$('#statusTxt').textContent='API 未连接';});
+
+let acT;
+$('#fund').addEventListener('input',e=>{clearTimeout(acT);const q=e.target.value.trim();if(!q){$('#fundList').style.display='none';return;}
+  acT=setTimeout(()=>API('/funds?limit=12&query='+encodeURIComponent(q)).then(r=>{
+    const l=$('#fundList');l.innerHTML='';if(!r.funds||!r.funds.length){l.style.display='none';return;}
+    r.funds.forEach(f=>{const d=document.createElement('div');const code=f.fund_code||f.code||'';const nm=f.name||'';
+      d.innerHTML=`<span class="code">${code}</span> ${nm} <span class="muted small">${f.fund_type||f.invest_type||''}</span>`;
+      d.onclick=()=>{$('#fund').value=code;l.style.display='none';};l.appendChild(d);});
+    l.style.display='block';}).catch(()=>{}),200);});
+document.addEventListener('click',e=>{if(!e.target.closest('.autoc'))$('#fundList').style.display='none';});
+
+function pill(v,map){v=(v||'').toString();const k=(map&&map[v.split('.').pop()])||v.toLowerCase().split('.').pop();return `<span class="pill ${k}">${v.split('.').pop()}</span>`;}
+const dirCls={UP:'up',DOWN:'down',RANGE:'range'};
+function card(title,html){return `<div class="card"><h3>${title}</h3>${html}</div>`;}
+function kv(k,v){return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;}
+
+$('#runBtn').onclick=async()=>{
+  const fund=$('#fund').value.trim().split(' ')[0], as_of=$('#asof').value;
+  if(!fund){alert('请输入基金代码');return;}
+  $('#analyzeOut').innerHTML='<div class="muted">运行中（首次会从 Tushare 拉取并入库，可能需要几秒）…</div>';
+  try{
+    const r=await API('/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fund_code:fund,as_of})});
+    lastAnalyze={fund_code:fund,as_of};renderAnalyze(r);
+  }catch(e){renderRefusal(e);}
+};
+function renderRefusal(e){
+  const d=typeof e==='string'?{reason:e}:e;
+  $('#analyzeOut').innerHTML=card('已拒绝（fail-closed）',
+    `<div class="err">合规门拦截：<b>${d.gate||''}</b></div><p>${d.reason||JSON.stringify(d)}</p>`+
+    (d.ingest?`<div class="muted small">ingest: ${d.ingest.nav_rows||0} NAV 行, gaps: ${(d.ingest.gaps||[]).join(', ')||'无'}</div>`:''));
+}
+const TIER_ZH={full:'完整 FULL',limited:'有限 LIMITED',deferred:'暂缓 DEFERRED'};
+const TIER_CLS={full:'done',limited:'partial',deferred:'deferred'};
+function renderAnalyze(r){
+  const sc=r.scope||{}, pv=r.product_view||{}, ms=r.market_state||{}, u=r.uncertainty||{};
+  const cal=sc.caliber||{}, tier=sc.support_tier||(sc.in_scope?'full':'limited');
+  let h='';
+  if(r.degraded||tier!=='full'){
+    h+=`<div class="card" style="border-color:var(--warn)"><b>该基金按『${TIER_ZH[tier]||tier}』口径分析</b>`+
+       `<div class="small" style="margin-top:6px">类别 ${(sc.category||'').split('.').pop()} · 风险来源：${(cal.risk_drivers||[]).join('、')||'—'}</div>`+
+       `<div class="err small" style="margin-top:6px">${cal.disclaimer||'该类型深度分析暂未支持。'}</div></div>`;
+  }
+  h+='<div class="grid">';
+  h+=card('产品视图 ProductView（由数值区间派生）',
+    kv('方向 direction',pill(pv.direction,dirCls))+
+    kv('趋势强度 trend',`<div class="bar"><div class="rng" style="left:0;width:${(pv.trend_strength||0)*100}%"></div></div>${f2(pv.trend_strength)}`)+
+    kv('波动 volatility',pill(pv.volatility))+
+    kv('可信度 confidence',f2(pv.confidence))+
+    (pv.action?kv('建议动作',`<span class="pill normal">${(pv.action||'').split('.').pop()}</span>`):''));
+  h+=card('分类 / 口径 Scope',
+    kv('支持档位 tier',`<span class="badge ${TIER_CLS[tier]||'partial'}">${TIER_ZH[tier]||tier}</span>`)+
+    kv('类别 category',(sc.category||'').split('.').pop())+
+    kv('适用视角 lenses',`<span class="small">${(cal.applicable_lenses||[]).join(', ')||'—'}</span>`)+
+    kv('advice 上限',(cal.advice_strength_cap||'').split('.').pop()||'—')+
+    kv('原因',`<span class="small">${sc.reason||''}</span>`));
+  h+=card('市场状态 MarketState（四维）',
+    kv('方向',pill(ms.direction,dirCls))+kv('波动',pill(ms.volatility))+
+    kv('压力',`<span class="tag">${(ms.stress||'').split('.').pop()}</span>`)+
+    kv('事件',`<span class="tag">${(ms.event||'').split('.').pop()}</span>`));
+  h+=card('不确定性 Uncertainty',kv('confidence',f2(u.confidence))+`<div class="muted small">${u.note||''}</div>`);
+  h+='</div>';
+  h+=card('暴露估计 Exposure（三层：披露事实 / 系统估计区间 / 置信度）', renderExposure(r.exposure||[]));
+  h+=card('数据可见性 DataVisibility', renderVisibility(r.visibility));
+  h+=card('多周期预测 Forecasts（区间，非标签）', renderForecasts(r.forecasts||{}));
+  h+=card('合规门 Compliance gates', renderGates(r.compliance_gates||[]));
+  h+=card('解释卡 ExplanationCard', renderExpl(r.explanation||{}));
+  if(r.ingest)h+=`<div class="muted small">入库：${r.ingest.nav_rows||0} NAV · ${r.ingest.holdings_reports||0} 持仓报告 · 行业图 ${r.ingest.industry_map_size||0} · gaps: ${(r.ingest.gaps||[]).join(', ')||'无'}</div>`;
+  h+=card('原始 JSON', `<pre>${JSON.stringify(r,null,2)}</pre>`);
+  $('#analyzeOut').innerHTML=h;
+}
+function renderExposure(ex){
+  if(!ex.length)return '<div class="muted">无可用暴露估计。</div>';
+  let h='<table><tr><th>维度</th><th>标签</th><th>区间</th><th>点估计</th><th>披露龄(天)</th><th>置信</th></tr>';
+  ex.forEach(e=>{const lo=(e.low||0)*100,hi=(e.high||0)*100,pt=(e.point_estimate||0)*100;
+    h+=`<tr><td>${(e.dimension||'').split('.').pop()}</td><td>${e.label}</td>`+
+      `<td style="min-width:120px"><div class="bar"><div class="rng" style="left:${lo}%;width:${Math.max(hi-lo,1)}%"></div><div class="pt" style="left:${pt}%"></div></div><span class="small muted">${e.range||''}</span></td>`+
+      `<td class="num">${pct(e.point_estimate)}</td><td class="num">${e.disclosure_age_days??'—'}</td><td class="num">${f2(e.confidence)}</td></tr>`;});
+  return h+'</table>';
+}
+function renderVisibility(v){
+  if(!v)return '<div class="muted">—</div>';
+  const snaps=v.snapshots||v.fields||(Array.isArray(v)?v:[]);
+  if(!snaps.length)return `<pre>${JSON.stringify(v,null,2)}</pre>`;
+  return snaps.map(s=>{const fr=(s.freshness||'').split('.').pop().toLowerCase();
+    return `<span class="tag ${fr}">${s.field_name||s.name||s.field||'?'}: ${fr}${s.age_days!=null?' ('+s.age_days+'d)':''}</span>`;}).join(' ');
+}
+function renderForecasts(fc){
+  const keys=Object.keys(fc);if(!keys.length)return '<div class="muted">—</div>';
+  let h='<table><tr><th>周期</th><th>收益区间</th><th>中值</th><th>正收益概率</th><th>波动</th><th>回撤概率</th></tr>';
+  keys.forEach(k=>{const f=fc[k]||{};
+    h+=`<tr><td>${(''+k).split('.').pop()}</td><td class="num">${pct(f.ret_low)} … ${pct(f.ret_high)}</td><td class="num">${pct(f.ret_mid)}</td>`+
+       `<td class="num">${pct(f.prob_positive)}</td><td class="num">${f2(f.vol_est)}</td><td class="num">${pct(f.drawdown_prob)}</td></tr>`;});
+  return h+'</table>';
+}
+function renderGates(g){
+  if(!g||!g.length)return '<div class="muted">无</div>';
+  return g.map(x=>{const st=x.passed===false?'fail':((x.degraded_action||x.degraded)?'degrade':'pass');
+    return `<div class="gate"><span class="s ${st}"></span><b>${x.gate||x.name}</b><span class="muted small">${x.reason||''}</span></div>`;}).join('');
+}
+function renderExpl(e){
+  const rows=[['为什么偏乐观',e.why_optimistic],['为什么仍需谨慎',e.why_cautious],['我们不知道什么',e.unknowns],['数据有多新',e.data_freshness],['什么会改变判断',e.what_would_change]];
+  return `<div class="expl">`+rows.map(([l,v])=>v?`<p><span class="lbl">${l}：</span>${Array.isArray(v)?v.join('；'):v}</p>`:'').join('')+`</div>`;
+}
+
+async function loadConfig(){
+  $('#cfgOut').innerHTML='<div class="muted">载入中…</div>';
+  try{const r=await API('/config');renderConfig(r);}catch(e){$('#cfgOut').innerHTML='<div class="err">'+e+'</div>';}
+}
+$('#reloadCfg').onclick=loadConfig;
+function renderConfig(r){
+  const cfg=r.config||{}, editable=r.editable||[];
+  const groups={};
+  editable.forEach(f=>{const p=f.path||f;const g=p.split('.')[0];(groups[g]=groups[g]||[]).push({path:p,value:getPath(cfg,p)});});
+  let h='';
+  Object.keys(groups).forEach(g=>{
+    let inner='';
+    groups[g].forEach(f=>{inner+=`<div class="cfg-field"><span class="path">${f.path.split('.').slice(1).join('.')}</span>`+
+      `<input data-path="${f.path}" value="${f.value??''}"></div>`;});
+    h+=`<div class="card"><h3>${g}</h3>${inner}<button class="act small" data-save="${g}" style="margin-top:8px">保存并重跑</button></div>`;
+  });
+  if(!h)h=`<div class="card muted">配置只读或无可编辑项。<pre>${JSON.stringify(cfg,null,2)}</pre></div>`;
+  $('#cfgOut').innerHTML=h;
+  $$('#cfgOut [data-save]').forEach(b=>b.onclick=()=>saveGroup(b.dataset.save));
+}
+function getPath(o,p){return p.split('.').reduce((a,k)=>a==null?a:a[k],o);}
+async function saveGroup(g){
+  const inputs=$$(`#cfgOut input[data-path^="${g}."]`);
+  try{
+    for(const inp of inputs){let v=inp.value;const n=Number(v);if(v!==''&&!isNaN(n))v=n;
+      await API('/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:inp.dataset.path,value:v})});}
+    if(lastAnalyze){
+      const r=await API('/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...lastAnalyze})});
+      renderAnalyze(r);$$('nav.tabs button').forEach(x=>x.classList.remove('active'));document.querySelector('[data-tab=analyze]').classList.add('active');
+      $$('.tab').forEach(t=>t.classList.remove('active'));$('#analyze').classList.add('active');
+    }else alert('已保存。请到分析页运行一次。');
+    loadConfig();
+  }catch(e){alert('保存失败：'+(e.detail||e));}
+}
+
+$('#btRun').onclick=async()=>{
+  const body={fund_code:$('#btFund').value.trim(),start:$('#btStart').value,end:$('#btEnd').value,strategy:$('#btStrat').value};
+  $('#btOut').innerHTML='<div class="muted">回测中…</div>';
+  try{const r=await API('/backtest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});renderBacktest(r);}
+  catch(e){$('#btOut').innerHTML='<div class="err">'+(e.detail||e)+'</div>';}
+};
+function renderBacktest(r){
+  let h='<div class="grid">';
+  h+=card('结果（净费后）',kv('策略',r.strategy)+kv('净收益',pct(r.net_return))+kv('最大回撤',pct(r.max_drawdown))+kv('总成本',pct(r.total_cost))+kv('决策次数',r.n_decisions));
+  const vb=r.vs_baseline||{};
+  h+=card('相对基线 vs baseline',Object.keys(vb).map(k=>k===r.self_baseline
+    ?kv(k,'<span class="muted">= 策略本身，非独立基线</span>')
+    :kv(k,(vb[k]>=0?'+':'')+pct(vb[k]))).join('')||'<span class="muted">—</span>');
+  const rg=r.net_return_by_regime||{};if(Object.keys(rg).length)h+=card('分市场环境',Object.keys(rg).map(k=>kv(k,pct(rg[k]))).join(''));
+  h+='</div>';
+  h+=card('净值曲线（策略 vs 买入持有 vs 定投）','<canvas id="eq"></canvas><div class="legend"><span><i style="background:#17a7a2"></i>策略</span><span><i style="background:#3b82f6"></i>buy_and_hold</span><span><i style="background:#e8943a"></i>fixed_sip</span></div>');
+  h+=card('原始 JSON',`<pre>${JSON.stringify(r.summary||r,null,2)}</pre>`);
+  $('#btOut').innerHTML=h;
+  drawEquity(r);
+}
+function drawEquity(r){
+  const c=$('#eq');if(!c)return;const dpr=devicePixelRatio||1;const W=c.clientWidth,H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;
+  const g=c.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,W,H);
+  const series=[['strategy',r.equity_curve,'#17a7a2']];
+  const bl=r.baselines||{};if(bl.buy_and_hold)series.push(['bh',bl.buy_and_hold.equity_curve,'#3b82f6']);if(bl.fixed_sip)series.push(['sip',bl.fixed_sip.equity_curve,'#e8943a']);
+  const all=series.flatMap(s=>(s[1]||[]).map(p=>p.equity??p.value));if(!all.length){g.fillStyle='#9aa7b4';g.fillText('无曲线数据',10,20);return;}
+  const mn=Math.min(...all),mx=Math.max(...all),pad=28;const len=Math.max((series[0][1]||[]).length-1,1);
+  const x=i=>pad+i*(W-2*pad)/len;
+  const y=v=>H-pad-(v-mn)/((mx-mn)||1)*(H-2*pad);
+  g.strokeStyle='#2a313c';g.beginPath();g.moveTo(pad,H-pad);g.lineTo(W-pad,H-pad);g.stroke();
+  series.forEach(([nm,cur,col])=>{if(!cur||!cur.length)return;g.strokeStyle=col;g.lineWidth=1.6;g.beginPath();
+    cur.forEach((p,i)=>{const vy=y(p.equity??p.value);i?g.lineTo(x(i),vy):g.moveTo(x(i),vy);});g.stroke();});
+  g.fillStyle='#9aa7b4';g.font='11px monospace';g.fillText(mx.toFixed(2),2,y(mx)+4);g.fillText(mn.toFixed(2),2,y(mn)+4);
+}
+
+// ---- Position management --------------------------------------------------
+const POS_KEY='qmt_position';
+function loadPos(){try{return JSON.parse(localStorage.getItem(POS_KEY))||{holdings:[]};}catch(e){return {holdings:[]};}}
+function savePos(p){localStorage.setItem(POS_KEY,JSON.stringify(p));}
+// reusable fund autocomplete: fills input with the picked code
+function mkAutocomplete(inp,list,onPick){
+  let t;
+  inp.addEventListener('input',e=>{clearTimeout(t);const q=e.target.value.trim();if(!q){list.style.display='none';return;}
+    t=setTimeout(()=>API('/funds?limit=12&query='+encodeURIComponent(q)).then(r=>{
+      list.innerHTML='';if(!r.funds||!r.funds.length){list.style.display='none';return;}
+      r.funds.forEach(f=>{const d=document.createElement('div');const code=f.fund_code||f.code||'';const nm=f.name||'';
+        d.innerHTML=`<span class="code">${code}</span> ${nm} <span class="muted small">${f.fund_type||f.invest_type||''}</span>`;
+        d.onclick=()=>{list.style.display='none';onPick(code,nm);};list.appendChild(d);});
+      list.style.display='block';}).catch(()=>{}),200);});
+  document.addEventListener('click',e=>{if(!e.target.closest('.autoc'))list.style.display='none';});
+}
+let posPick={code:'',name:''};
+const _todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+// hold days = today − buy_date (server recomputes authoritatively at as_of); legacy hold_days fallback.
+const holdDaysOf=h=>{if(h.buy_date){const ms=Date.now()-new Date(h.buy_date+'T00:00:00').getTime();return Math.max(0,Math.floor(ms/86400000));}return h.hold_days||0;};
+let posSort={col:'',dir:1};
+const _sortKey=(h,col)=>{
+  if(col==='market_value'||col==='weight')return +h.market_value||0;
+  if(col==='hold_days')return holdDaysOf(h);
+  if(col==='buy_date')return h.buy_date||'';
+  return h.fund_code||'';
+};
+function renderPosition(){
+  const p=loadPos();
+  $('#posRisk').value=p.suitability?.risk_tolerance||'C3';
+  $('#posHorizon').value=p.suitability?.investment_horizon_days||365;
+  $('#posCash').value=p.available_cash||'';
+  $('#posReserve').value=p.min_cash_reserve||0;
+  $('#posFull').checked=!!p.must_fully_invest;
+  if(!$('#posBuy').value)$('#posBuy').value=_todayISO();
+  const body=$('#posBody');const total=p.holdings.reduce((a,h)=>a+(+h.market_value||0),0)||1;
+  if(!p.holdings.length){$('#posEmpty').style.display='block';$('#posTable').style.display='none';body.innerHTML='';return;}
+  $('#posEmpty').style.display='none';$('#posTable').style.display='';
+  // sort a display copy (storage order untouched; delete by fund_code)
+  let rows=p.holdings.slice();
+  if(posSort.col)rows.sort((a,b)=>{const ka=_sortKey(a,posSort.col),kb=_sortKey(b,posSort.col);return (ka<kb?-1:ka>kb?1:0)*posSort.dir;});
+  $$('#posTable th.sortable').forEach(th=>{const c=th.dataset.sort;th.querySelector('.ind')?.remove();
+    if(posSort.col===c){const s=document.createElement('span');s.className='ind';s.textContent=posSort.dir>0?'▲':'▼';th.appendChild(s);}});
+  body.innerHTML=rows.map(h=>`<tr><td><span class="code">${h.fund_code}</span> <span class="muted small">${h.name||''}</span></td>`+
+    `<td class="num">${(+h.market_value).toLocaleString()}</td><td class="num">${h.buy_date||'—'}</td><td class="num">${holdDaysOf(h)}</td>`+
+    `<td class="num">${pct(h.market_value/total)}</td><td><button class="ghost small" data-del="${h.fund_code}">删除</button></td></tr>`).join('');
+  $$('#posBody [data-del]').forEach(b=>b.onclick=()=>{const q=loadPos();q.holdings=q.holdings.filter(h=>h.fund_code!==b.dataset.del);savePos(q);renderPosition();});
+}
+$$('#posTable th.sortable').forEach(th=>th.onclick=()=>{const c=th.dataset.sort;posSort.dir=(posSort.col===c)?-posSort.dir:1;posSort.col=c;renderPosition();});
+$('#posAdd').onclick=async()=>{
+  const code=($('#posFund').value.trim().split(' ')[0]||posPick.code), mv=+$('#posMv').value, buy=$('#posBuy').value||'';
+  if(!/^\d{6}$/.test(code)){alert('请输入或选择 6 位基金代码');return;}
+  if(!(mv>0)){alert('请输入金额');return;}
+  if(!buy){alert('请选择买入日期');return;}
+  // Only allow funds that exist in the fund library — verify the code (unless picked from the list).
+  let name = (posPick.code===code) ? posPick.name : '';
+  if(!name){
+    const btn=$('#posAdd'); btn.disabled=true; const label=btn.textContent; btn.textContent='校验中…';
+    try{
+      const r=await API('/funds?limit=8&query='+encodeURIComponent(code));
+      const hit=(r.funds||[]).find(f=>(f.fund_code||f.code)===code);
+      if(!hit){alert('未找到基金 '+code+'——请从下拉列表中选择基金库里的有效基金。');return;}
+      name=hit.name||'';
+    }catch(e){alert('无法校验基金（'+(e.detail||e)+'），请稍后重试。');return;}
+    finally{btn.disabled=false; btn.textContent=label;}
+  }
+  const p=loadPos();
+  const ex=p.holdings.find(h=>h.fund_code===code);
+  if(ex){ex.market_value=mv;ex.buy_date=buy;delete ex.hold_days;ex.name=name||ex.name;}
+  else p.holdings.push({fund_code:code,name:name,market_value:mv,buy_date:buy});
+  savePos(p);$('#posFund').value='';$('#posMv').value='';posPick={code:'',name:''};renderPosition();
+};
+mkAutocomplete($('#posFund'),$('#posFundList'),(code,nm)=>{$('#posFund').value=code;posPick={code,name:nm};});
+function persistSuitability(){const p=loadPos();p.suitability={risk_tolerance:$('#posRisk').value,investment_horizon_days:+$('#posHorizon').value||365};p.available_cash=+$('#posCash').value||0;p.min_cash_reserve=+$('#posReserve').value||0;p.must_fully_invest=$('#posFull').checked;savePos(p);}
+$('#posRisk').onchange=persistSuitability;$('#posHorizon').onchange=persistSuitability;$('#posCash').onchange=persistSuitability;$('#posReserve').onchange=persistSuitability;$('#posFull').onchange=persistSuitability;
+const ACT_CLS={'适当加仓':'up','减少部分仓位':'down','继续观望':'range','等待新信号':'range','维持定投':'normal','暂停定投':'high'};
+$('#posGen').onclick=async()=>{
+  const p=loadPos();const cash=+$('#posCash').value||0;
+  if(!p.holdings.length && !(cash>0)){alert('请输入可用资金，或至少录入一只持仓。');return;}
+  persistSuitability();
+  // No as_of: the server defaults to today, so suggestions are always the newest available.
+  const body={holdings:p.holdings.map(h=>({fund_code:h.fund_code,market_value:+h.market_value,buy_date:h.buy_date||null,hold_days:h.buy_date?null:(h.hold_days??null)})),
+    available_cash:cash,must_fully_invest:$('#posFull').checked,min_cash_reserve:+$('#posReserve').value||0,
+    risk_tolerance:$('#posRisk').value,investment_horizon_days:+$('#posHorizon').value||365};
+  $('#posOut').innerHTML='<div class="muted">生成中（会为每只基金拉取数据并穿透，可能需要几秒）…</div>';
+  try{const r=await API('/portfolio/suggestions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});renderSuggestions(r);}
+  catch(e){$('#posOut').innerHTML=card('已拒绝',`<div class="err">${(e.reason||e.detail?.reason||e.detail||e)}</div>`);}
+};
+const money=x=>x==null?'—':'¥'+(+x).toLocaleString(undefined,{maximumFractionDigits:0});
+function renderSuggestions(r){
+  const lt=r.lookthrough||{}, rb=r.risk_budget||{}, ms=r.market_state||null;
+  const nameOf={};loadPos().holdings.forEach(h=>nameOf[h.fund_code]=h.name||'');
+  let h=`<div class="muted small" style="margin-bottom:10px">决策时点 as_of：<b>${r.as_of||''}</b>（自动取最新；仅使用该时点前可观测的数据）。</div>`;
+  // cash-only guidance banner (no fund positions)
+  if(!r.n_funds && r.summary_note){
+    h+=`<div class="card" style="border-color:var(--accent)"><b>空仓提示</b><div class="small" style="margin-top:6px">${r.summary_note}</div></div>`;
+  }
+  h+='<div class="grid">';
+  // asset overview (cash + total + cash weight) — always
+  h+=card('资产概览 Assets',
+    kv('可用资金 / 现金',money(r.available_cash))+
+    kv('基金持仓',`${money((r.total_investable||0)-(r.available_cash||0))}（${r.n_funds} 只）`)+
+    kv('总可投',money(r.total_investable))+
+    kv('现金占比',`<div class="bar"><div class="rng" style="left:0;width:${Math.min((r.cash_weight||0)*100,100)}%"></div></div>${pct(r.cash_weight)}`));
+  // market environment (broad; useful even with no holdings)
+  if(ms)h+=card('市场环境 Market state',
+    kv('方向',pill(ms.direction,dirCls))+kv('波动',pill(ms.volatility))+
+    kv('压力',`<span class="tag">${(ms.stress||'').split('.').pop()}</span>`)+
+    kv('事件',`<span class="tag">${(ms.event||'').split('.').pop()}</span>`)+
+    (r.environment_note?`<div class="small" style="margin-top:6px">${r.environment_note}</div>`:''));
+  else h+=card('市场环境 Market state','<div class="muted small">市场状态数据暂不可用（请先运行一次分析 / 入库以获取指数数据）。</div>');
+  // portfolio penetration (only when there are holdings)
+  const style=Object.entries(lt.style_conc||{}).sort((a,b)=>b[1]-a[1])[0];
+  const ind=Object.entries(lt.industry_conc||{}).sort((a,b)=>b[1]-a[1])[0];
+  if(r.n_funds)h+=card('组合穿透 Look-through',
+    ((r.summary_note&&r.n_funds)?`<div class="muted small">${r.summary_note}</div>`:'')+
+    kv('持有基金',`${r.n_funds} 只（其中权益 ${r.n_equity} 只）`)+
+    (style?kv('最大风格集中',`${style[0]} ${pct(style[1])}`):'')+
+    (ind?kv('最大行业集中',`${ind[0]} ${pct(ind[1])}`):'')+
+    ((lt.theme_overlap&&lt.theme_overlap.length)?kv('主题重复暴露',lt.theme_overlap.join('、')):'')+
+    (style?`<div class="small" style="margin-top:6px">你持有 ${r.n_funds} 只基金，但穿透后 <b>${style[0]}</b> 风格暴露约 <b>${pct(style[1])}</b>，实际分散程度低于表面。`:''));
+  if(rb&&rb.budget_usage!=null)h+=card('风险预算 Risk budget',
+    kv('预算使用',`<div class="bar"><div class="rng" style="left:0;width:${Math.min(rb.budget_usage*100,100)}%;background:${rb.over_budget?'rgba(229,83,75,.5)':'rgba(23,167,162,.4)'}"></div></div>${f2(rb.budget_usage)}`)+
+    kv('是否超预算',rb.over_budget?'<span class="pill down">超预算</span>':'<span class="pill up">预算内</span>')+
+    (rb.single_industry_max!=null?kv('单一行业最大',pct(rb.single_industry_max)):''));
+  h+='</div>';
+  // cash allocation plan (when usable cash was provided)
+  const ca=r.cash_allocation;
+  if(ca){
+    if(ca.invest && (ca.allocations||[]).length){
+      let rows='<table><tr><th>基金</th><th>投入 ¥</th><th>占比</th><th>评分</th></tr>';
+      ca.allocations.forEach(a=>{rows+=`<tr><td><span class="code">${a.fund_code}</span> <span class="muted small">${nameOf[a.fund_code]||''}</span></td>`+
+        `<td class="num">${money(a.amount)}</td><td class="num">${pct(a.weight)}</td><td class="num">${f2(a.score)}</td></tr>`;});
+      rows+=`<tr><td><b>保留现金</b></td><td class="num"><b>${money(ca.kept_cash)}</b></td><td class="num">—</td><td></td></tr></table>`;
+      h+=card('现金分配建议 Cash allocation', `<div class="small" style="margin-bottom:8px">${ca.rationale||''}</div>`+rows);
+    }else{
+      h+=`<div class="card" style="border-color:var(--warn)"><h3>现金分配建议 Cash allocation</h3>`+
+        `<div><span class="pill range">暂时保留现金</span> 建议保留 <b>${money(ca.kept_cash)}</b></div>`+
+        `<div class="small muted" style="margin-top:6px">${ca.rationale||''}</div></div>`;
+    }
+  }
+  // per-fund suggestions (only when there are holdings)
+  if((r.suggestions||[]).length){
+    let rows='<table><tr><th>基金</th><th>档位</th><th>权重</th><th>建议</th><th>说明</th></tr>';
+    r.suggestions.forEach(s=>{
+      const tier=s.support_tier||'';
+      const act=s.supported?`<span class="pill ${ACT_CLS[s.action]||'normal'}">${s.action}</span>`:`<span class="tag">不支持</span>`;
+      const note=s.supported?(s.rationale||''):(s.reason||'');
+      rows+=`<tr><td><span class="code">${s.fund_code}</span> <span class="muted small">${nameOf[s.fund_code]||''}</span></td>`+
+        `<td><span class="badge ${TIER_CLS[tier]||'partial'}">${(TIER_ZH[tier]||tier).split(' ')[0]}</span></td>`+
+        `<td class="num">${pct(s.weight)}</td><td>${act}</td><td class="small muted">${note}</td></tr>`;
+    });
+    h+=card('逐只调仓建议 Per-fund suggestions',rows+'</table>');
+  }
+  h+=card('原始 JSON',`<pre>${JSON.stringify(r,null,2)}</pre>`);
+  $('#posOut').innerHTML=h;
+}
+
+// ---- Training (auto method + whole-market target + walk-forward validation) ----
+let trAuto=null, trAbort=null, trSplit=null, trLastRun=null;  // trLastRun = last finished run object
+const METRIC_ZH={sharpe:'夏普比率',net_return:'净收益',cagr:'年化收益',calmar:'卡玛比率',vs_buy_and_hold:'相对买入持有',hit_rate:'方向命中率'};
+const OBJ_ZH={backtest:'回测（净费后）',direction:'方向命中率（点位回放）'};
+const f3=x=>x==null||!isFinite(x)?'—':(+x).toFixed(3);
+
+async function loadTuningModels(){
+  let cat;
+  try{cat=await API('/tuning/models');}
+  catch(e){$('#trModelCard').innerHTML='<span class="err">'+(e.detail||e)+'</span>';return;}
+  trAuto={...cat.model, benchmark:cat.benchmark, metricKey:cat.metric};
+  // Default the training window to the FULL available benchmark history (longest range), and pin
+  // the pickers' bounds to it, so training uses ALL data by default. Only set once (don't stomp a
+  // range the user already edited this session).
+  if(cat.data_range && !window._trRangeInit){
+    const a=$('#trStartMonth'), b=$('#trEndMonth');
+    a.min=cat.data_range.start_month; a.max=cat.data_range.end_month;
+    b.min=cat.data_range.start_month; b.max=cat.data_range.end_month;
+    a.value=cat.data_range.start_month; b.value=cat.data_range.end_month;
+    window._trRangeInit=true;
+  }
+  renderTrModelCard();
+  refreshTrSplit();
+  loadTrHistory();
+}
+function renderTrModelCard(){
+  const m=trAuto;const cap=m.capped?`（原始网格 ${m.grid_size} → 覆盖抽样 ${m.n_candidates}）`:`（穷举全部 ${m.n_candidates} 个候选）`;
+  const plist=m.params.map(p=>`${p.label} ∈ {${p.values.join(', ')}}（当前 ${p.current}）`).join('　·　');
+  $('#trModelCard').innerHTML=`<div class="card" style="border-color:var(--accent)"><h3>自动选择：${m.name_zh} <span class="muted" style="font-weight:400">${m.name_en}</span></h3>`+
+    `<p class="small">${m.summary}</p>`+
+    `<div class="ref">训练目标：<b>整个市场 ${m.benchmark}</b> · 目标指标 ${METRIC_ZH[m.metricKey]||m.metricKey} · ${OBJ_ZH[m.objective]||m.objective} · 策略=${m.strategy}</div>`+
+    `<div class="small muted" style="margin-top:8px">搜索空间 ${cap}：<br>${plist}</div></div>`;
+}
+
+// The user picks only a month range; the SERVER decides the walk-forward folds + holdout.
+async function refreshTrSplit(){
+  const s=$('#trStartMonth').value, e=$('#trEndMonth').value;
+  if(!s||!e){$('#trSplit').innerHTML='';trSplit=null;return;}
+  try{
+    const r=await API(`/tuning/split?start_month=${s}&end_month=${e}`);
+    trSplit=r;
+    const folds=r.folds.map(f=>`<div class="small">第 ${f.index+1} 折　训练 ${f.train}　→　<b>样本外验证</b> ${f.valid}</div>`).join('');
+    $('#trSplit').innerHTML=`<div class="card" style="padding:10px"><div class="small"><b>系统自动划分</b>（走步式 ${r.n_folds} 折 + 留出确认；择优只看样本外，绝不看样本内）</div>`+
+      folds+`<div class="small" style="margin-top:4px;color:var(--accent)"><b>留出窗口</b>（择优期间从未使用，只用于最终确认）：${r.holdout}</div>`+
+      `<div class="small muted">（样本内窗口 ${r.insample} 仅用于诊断"样本内排名是否有误导性"，不参与择优）</div></div>`;
+  }catch(err){trSplit=null;$('#trSplit').innerHTML=`<span class="err">${err.detail||err}</span>`;}
+}
+$('#trStartMonth').onchange=refreshTrSplit; $('#trEndMonth').onchange=refreshTrSplit;
+$('#trStop').onclick=()=>{$('#trStatus').textContent='停止中…（在下个候选处安全中止）';
+  API('/tuning/cancel',{method:'POST'}).catch(()=>{});};
+
+$('#trRun').onclick=async()=>{
+  if(!trAuto){await loadTuningModels(); if(!trAuto)return;}
+  const body={start_month:$('#trStartMonth').value,end_month:$('#trEndMonth').value,ingest:$('#trIngest').checked};
+  if(!body.start_month||!body.end_month){alert('请选择开始月份与结束月份。');return;}
+  await refreshTrSplit();
+  if(!trSplit){alert('月份区间无效：至少需要 4 个月（训练折 + 样本外验证折 + 留出窗口）。');return;}
+  const st={metric:trAuto.metricKey,cands:[],baseline:null,total:0,diag:null,holdout:null,done:false};
+  trLastRun=null;
+  $('#trRun').disabled=true;$('#trStop').style.display='';$('#trProgWrap').style.display='';
+  $('#trProg').style.width='0%';$('#trStatus').textContent='连接中…';$('#trOut').innerHTML='';
+  try{
+    const resp=await fetch('/api/tuning/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!resp.ok){const j=await resp.json().catch(()=>({}));throw (j.detail||('HTTP '+resp.status));}
+    const reader=resp.body.getReader();const dec=new TextDecoder();let buf='';
+    for(;;){
+      const {value,done}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      let idx;
+      while((idx=buf.indexOf('\n\n'))>=0){
+        const chunk=buf.slice(0,idx);buf=buf.slice(idx+2);
+        const line=chunk.split('\n').find(l=>l.startsWith('data: '));if(!line)continue;
+        handleTrEvent(JSON.parse(line.slice(6)),st);
+      }
+    }
+  }catch(e){
+    $('#trOut').innerHTML=card('训练失败',`<div class="err">${e.detail||e}</div>`)+$('#trOut').innerHTML;
+  }finally{$('#trRun').disabled=false;$('#trStop').style.display='none';}
+};
+
+function handleTrEvent(ev,st){
+  if(ev.event==='error'){$('#trStatus').innerHTML='<span class="err">'+(ev.detail||'错误')+'</span>';return;}
+  if(ev.event==='cancelled'){$('#trStatus').textContent=`已停止（已评估 ${ev.completed||0}/${ev.total||0} 个候选，未产生最终结果）。`;return;}
+  if(ev.event==='ingest'){$('#trStatus').textContent=`市场指数可用 ${ev.nav_rows||0} 根 K 线${ev.gaps&&ev.gaps.length?'（'+ev.gaps.join(',')+'）':''} · 开始训练…`;return;}
+  if(ev.event==='start'){st.total=ev.total;st.capped=ev.capped;st.grid_size=ev.grid_size;st.plan=ev.plan;
+    $('#trStatus').textContent=`走步式训练 ${ev.total} 个候选 × ${ev.plan.folds.length} 折（目标 ${METRIC_ZH[ev.metric]||ev.metric}）…`;return;}
+  if(ev.event==='baseline'){st.baseline=ev.candidate;renderTrLive(st);return;}
+  if(ev.event==='trial'){st.cands.push(ev.candidate);
+    if(ev.total)st.total=ev.total;
+    const p=Math.round((st.cands.length/(st.total||1))*100);$('#trProg').style.width=p+'%';
+    const tag=ev.stage==='refine'?'精细搜索':'训练中';
+    $('#trStatus').textContent=`${tag} ${st.cands.length}/${st.total} · 当前最优（样本外 CV）${f3(bestCvSoFar(st))}`;
+    renderTrLive(st);return;}
+  if(ev.event==='refine_start'){st.refining=true;
+    $('#trStatus').textContent=`粗网格已选出最优，正在其邻域做 ${ev.n} 个精细候选（coarse-to-fine）…`;return;}
+  if(ev.event==='selection'){st.selection=ev;
+    if(ev.stage==='refine')st.refining=false;return;}
+  if(ev.event==='diagnostics'){st.diag=ev;return;}
+  if(ev.event==='holdout'){st.holdout=ev;return;}
+  if(ev.event==='done'){st.done=true;trLastRun=ev.result;
+    $('#trProg').style.width='100%';
+    $('#trStatus').textContent=`完成 · ${st.cands.length} 个候选${ev.result.diagnostics.capped?'（网格已覆盖抽样）':'（网格已穷举）'}。`;
+    renderTrResult(ev.result);loadTrHistory();
+    loadTrCurves(true);   // auto-render 预测 vs 真实 曲线 right after training finishes
+    return;}
+}
+const cvOf=c=>c&&c.cv_mean!=null?c.cv_mean:null;
+const isOf=c=>c&&c.insample_objective!=null?c.insample_objective:null;
+function bestCvSoFar(st){let b=null;st.cands.forEach(c=>{const v=cvOf(c);if(v!=null&&(b==null||v>b))b=v;});return b;}
+
+function renderTrLive(st){
+  $('#trOut').innerHTML=card('训练过程 Training curve（每个候选的<b>样本外 CV</b> 目标值，越高越好）',
+    '<canvas id="trCurve"></canvas><div class="legend">'+
+    '<span><i style="background:#17a7a2"></i>候选样本外 CV</span><span><i style="background:#e8943a"></i>当前最优</span>'+
+    '<span><i style="background:#8b93a1"></i>基线</span><span><i style="background:#e5534b"></i>样本内（仅诊断）</span></div>');
+  drawTrCurve(st);
+}
+function drawTrCurve(st){
+  const c=$('#trCurve');if(!c)return;const dpr=devicePixelRatio||1;const W=c.clientWidth,H=c.clientHeight;
+  c.width=W*dpr;c.height=H*dpr;const g=c.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,W,H);
+  const cv=st.cands.map(cvOf), ins=st.cands.map(isOf);
+  const base=st.baseline?cvOf(st.baseline):null;
+  const all=cv.concat(ins).concat(base!=null?[base]:[]).filter(v=>v!=null&&isFinite(v));
+  if(!all.length){g.fillStyle='#9aa7b4';g.font='12px monospace';g.fillText('等待评估…',10,20);return;}
+  let mn=Math.min(...all),mx=Math.max(...all);if(mn===mx){mn-=1;mx+=1;}const pad=30;
+  const n=Math.max(st.total-1,1);
+  const x=i=>pad+i*(W-2*pad)/n, y=v=>H-pad-(v-mn)/((mx-mn)||1)*(H-2*pad);
+  g.strokeStyle='#2a313c';g.beginPath();g.moveTo(pad,H-pad);g.lineTo(W-pad,H-pad);g.stroke();
+  if(base!=null&&isFinite(base)){g.strokeStyle='#8b93a1';g.setLineDash([5,4]);g.beginPath();g.moveTo(pad,y(base));g.lineTo(W-pad,y(base));g.stroke();g.setLineDash([]);}
+  // in-sample (diagnostic) points — shows visually whether in-sample tracks OOS at all
+  g.fillStyle='rgba(229,83,75,.55)';ins.forEach((v,i)=>{if(v==null||!isFinite(v))return;g.beginPath();g.arc(x(i),y(v),2.0,0,7);g.fill();});
+  let run=-Infinity;const bestPts=cv.map(v=>{if(v!=null&&isFinite(v)&&v>run)run=v;return isFinite(run)?run:null;});
+  g.strokeStyle='#e8943a';g.lineWidth=1.6;g.beginPath();let started=false;
+  bestPts.forEach((v,i)=>{if(v==null)return;const py=y(v);started?g.lineTo(x(i),py):g.moveTo(x(i),py);started=true;});g.stroke();
+  g.fillStyle='#17a7a2';cv.forEach((v,i)=>{if(v==null||!isFinite(v))return;g.beginPath();g.arc(x(i),y(v),2.6,0,7);g.fill();});
+  g.fillStyle='#9aa7b4';g.font='11px monospace';g.fillText(mx.toFixed(2),2,y(mx)+4);g.fillText(mn.toFixed(2),2,y(mn)+4);
+}
+
+const TR_COLS=[['sharpe','夏普'],['net_return','净收益',1],['turnover','换手'],['max_drawdown','最大回撤',1],['total_cost','成本',1],['n_decisions','决策数']];
+function metricCell(m,key,ispct){if(!m||m[key]==null)return '—';const v=m[key];return ispct?pct(v):(typeof v==='number'?(Number.isInteger(v)?v:v.toFixed(3)):v);}
+
+function renderTrResult(r){
+  const mt=METRIC_ZH[r.metric]||r.metric, st={cands:r.candidates,baseline:r.baseline,total:r.candidates.length};
+  let h=card('训练过程 Training curve（每个候选的<b>样本外 CV</b> 目标值，越高越好）',
+    '<canvas id="trCurve"></canvas><div class="legend">'+
+    '<span><i style="background:#17a7a2"></i>候选样本外 CV</span><span><i style="background:#e8943a"></i>当前最优</span>'+
+    '<span><i style="background:#8b93a1"></i>基线</span><span><i style="background:#e5534b"></i>样本内（仅诊断）</span></div>');
+
+  // --- promotion verdict (the gate that decides whether Apply is even allowed) ---
+  const promo=r.promotion, ok=promo.promotable;
+  let crit=promo.criteria.map(c=>`<div class="small" style="padding:2px 0">`+
+    `<span style="color:${c.passed?'var(--up)':'var(--down)'};font-weight:700">${c.passed?'✓':'✗'}</span> ${c.name}`+
+    `<span class="muted"> — ${c.detail}</span></div>`).join('');
+  h+=`<div class="card" style="border-color:${ok?'var(--up)':'var(--down)'}"><h3>验收结论 Promotion verdict</h3>`+
+     `<div style="font-size:15px;font-weight:700;color:${ok?'var(--up)':'var(--down)'};margin-bottom:6px">`+
+     (ok?'✓ 可以采用：该候选稳定优于基线':'✗ 不可采用：该候选没有稳定优于基线，应保留现有基线')+`</div>${crit}</div>`;
+
+  // --- diagnostics ---
+  const rc=r.diagnostics.rank_correlation;
+  const rcWarn=(rc!=null&&rc<=0)?`<div class="err small" style="margin-top:6px">⚠ 样本内排名与样本外表现<b>负相关</b>：按样本内择优会系统性选错。本次择优已改为只看样本外，故不受影响。</div>`:
+    (rc!=null?`<div class="small muted" style="margin-top:6px">样本内排名与样本外表现的相关性仅供参考；本次择优只看样本外。</div>`:'');
+  h+=card('诊断 Diagnostics',
+    kv('样本内 vs 样本外 排名相关（Spearman）',f3(rc))+
+    kv('样本外 CV 优于基线的候选数',`${r.diagnostics.n_beating_baseline_cv} / ${r.diagnostics.n_candidates}`)+
+    kv('候选网格',`${r.diagnostics.total_candidates} → 评估 ${r.diagnostics.n_candidates}${r.diagnostics.capped?'（覆盖抽样，每个取值都被试过）':'（穷举）'}`)+rcWarn);
+
+  // --- best candidate ---
+  const b=r.best;
+  if(b){
+    const base=r.baseline, ho=r.holdout;
+    const paramRows=Object.entries(b.params).map(([k,v])=>kv(k.split('.').pop(),v)).join('');
+    let cmp='<table><tr><th>指标 ('+mt+')</th><th>基线</th><th>最优候选</th></tr>'+
+      `<tr><td>样本外 CV 均值（择优依据）</td><td class="num">${f3(base.cv_mean)}</td><td class="num"><b>${f3(b.cv_mean)}</b> ± ${f3(b.cv_std)}</td></tr>`+
+      `<tr><td><b>留出窗口</b>（从未参与择优）</td><td class="num">${f3(ho.baseline_objective)}</td><td class="num"><b>${f3(ho.best_objective)}</b></td></tr>`+
+      `<tr><td class="muted">样本内（仅诊断，不用于择优）</td><td class="num muted">${f3(base.insample_objective)}</td><td class="num muted">${f3(b.insample_objective)}</td></tr></table>`;
+    const foldRow='<table><tr><th>逐折样本外</th>'+b.fold_objectives.map((_,i)=>`<th>第${i+1}折</th>`).join('')+'</tr>'+
+      `<tr><td>基线</td>${base.fold_objectives.map(v=>`<td class="num">${f3(v)}</td>`).join('')}</tr>`+
+      `<tr><td>最优候选</td>${b.fold_objectives.map(v=>`<td class="num">${f3(v)}</td>`).join('')}</tr></table>`;
+    h+=`<div class="card"><h3>最优候选 Best candidate</h3>${paramRows}`+
+      `<div style="margin:10px 0">${cmp}</div><div style="margin:10px 0">${foldRow}</div>`+
+      (ok?`<button class="act" id="trApply">应用到模型 Apply</button> <span class="muted small">写入 CONFIG，下次分析/建议即生效。</span>`
+        :`<button class="act" id="trApply" disabled style="opacity:.45;cursor:not-allowed">应用到模型 Apply</button> <span class="err small">未通过验收，已禁用；保留现有基线才是正确做法。</span>`)+
+      `</div>`;
+  }
+
+  // --- all candidates, ranked by the OUT-OF-SAMPLE score ---
+  let rows=`<table><tr><th>#</th><th>参数</th><th>样本外 CV</th><th>样本内(诊断)</th>`+TR_COLS.map(c=>`<th>${c[1]}</th>`).join('')+'</tr>';
+  const addRow=(c,tag)=>{const isBest=b&&c.index===b.index;
+    const pstr=Object.keys(c.params).length?Object.entries(c.params).map(([k,v])=>`${k.split('.').pop()}=${v}`).join(', '):(tag||'基线');
+    return `<tr style="${isBest?'background:rgba(23,167,162,.10)':''}"><td>${c.index<0?'基线':(isBest?'★':c.index)}</td>`+
+      `<td class="small">${pstr}</td><td class="num"><b>${f3(c.cv_mean)}</b></td><td class="num muted">${f3(c.insample_objective)}</td>`+
+      TR_COLS.map(k=>`<td class="num">${metricCell(c.insample,k[0],k[2])}</td>`).join('')+'</tr>';};
+  const ranked=r.candidates.slice().sort((x,y)=>(y.cv_mean??-1e9)-(x.cv_mean??-1e9));
+  rows+=addRow(r.baseline); ranked.forEach(c=>rows+=addRow(c)); rows+='</table>';
+  h+=card(`候选评估明细 Trials（${r.candidates.length} 个，按<b>样本外 CV</b> 排序；表中回测指标取样本内窗口）`,rows);
+
+  // How the winner was chosen. Ranking by raw cv_mean elects whoever drew the luckiest fold, since
+  // most of a fold's spread is its own market regime — which the baseline lives through too.
+  const sel=r.selection;
+  if(sel){
+    const e=(r.best&&sel.edges)?sel.edges[String(r.best.index)]:null;
+    let sh=`<div class="small">${sel.reason||'—'}</div>`;
+    if(e)sh+=`<div class="muted small" style="margin-top:6px">胜出候选相对基线的<b>逐折配对优势</b>：均值 ${f3(e.mean)} · 标准误 ${f3(e.se)} · 配对 t ${f3(e.t)} · 下置信界 LCB <b>${f3(e.lcb)}</b>（${e.n_folds} 折）</div>`;
+    sh+=`<div class="muted small" style="margin-top:6px">择优不按 <code>cv_mean</code> 取最大：逐折差异大部分是<b>该折自身的市场环境</b>，基线同样经历，属共模噪声。逐折配对可将其抵消。</div>`;
+    h+=card('择优依据 Selection（逐折配对下置信界 + 1-SE 规则）',sh);
+  }
+
+  h+=`<div class="muted small">目标=${mt} · 走步式 ${r.plan.folds.length} 折 + 留出 ${r.plan.holdout} · 训练目标为整个市场 ${r.benchmark}。`+
+     `<b>净费口径</b>：按代表性权益基金费率计提（申购费、短持有惩罚性赎回费、销售服务费），故换手会被成本惩罚。`+
+     `点位回放（不偷看未来）。夏普/波动按 252 日年化，无风险利率取 0；换手为目标仓位年化单边变动。`+
+     (r.run_id?`　记录已保存：<code>${r.run_id}</code>`:'')+`</div>`;
+  $('#trOut').innerHTML=h;
+  drawTrCurve(st);
+  const ab=$('#trApply');
+  if(ab&&!ab.disabled)ab.onclick=async()=>{ab.disabled=true;ab.textContent='应用中…';
+    try{await API('/tuning/apply',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({params:b.params, run_id:r.run_id})});
+      ab.textContent='✓ 已应用';ab.style.background='var(--up)';
+      if($('#cfgOut'))$('#cfgOut').innerHTML='';
+    }catch(e){ab.disabled=false;ab.textContent='应用到模型 Apply';alert('应用失败：'+(e.detail||e));}
+  };
+}
+
+// --- persisted run history (a run must survive the browser tab) ---
+// ---- three-layer diagnostics (源文档 §3.3 / techdesign §5.3) ---------------------
+// Every claim here is fail-closed: a layer is only credited with skill when the overlap-corrected
+// tests agree, and "broken" means "did not beat its own naive baseline".
+const sigCell=sg=>{
+  if(!sg||sg.mean==null)return '<span class="muted">样本不足</span>';
+  const ok=sg.significant;
+  return `<span class="${ok?'':'muted'}">${ok?'显著':'不显著'}</span>`+
+    `<div class="small muted">非重叠 t=${f2(sg.t_nonoverlap)} · NW t=${f2(sg.t_newey_west)} · CI[${f3(sg.ci_low)}, ${f3(sg.ci_high)}]</div>`;
+};
+function renderLayers(d){
+  let h='';
+  // Findings are server-generated Chinese prose with **bold** emphasis; render the emphasis.
+  // They contain no user input, so the only markup we admit is <b>.
+  const md=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  if(d.findings&&d.findings.length)
+    h+=card('诊断结论 Findings（fail-closed，未通过重叠修正的一律不认定为技能）',
+      '<ul style="margin:0;padding-left:18px">'+d.findings.map(x=>`<li style="margin:6px 0;line-height:1.7">${md(x)}</li>`).join('')+'</ul>');
+
+  const b=d.baselines||{};
+  let br='<table><tr><th>层</th><th>朴素基线</th><th>指标</th><th>模型</th><th>基线</th><th>是否击败基线</th><th>配对差值显著性</th></tr>';
+  Object.values(b).forEach(v=>{
+    br+=`<tr><td>${v.layer}</td><td class="small">${v.baseline}</td><td>${v.metric}</td>`+
+        `<td>${f3(v.model_score)}</td><td>${f3(v.baseline_score)}</td>`+
+        `<td>${v.beats_baseline?'<b>是</b>':'<span class="err">否</span>'}</td><td>${sigCell(v.significance)}</td></tr>`;
+  });
+  h+=card('增量价值 Incremental value（CLAUDE.md：跑不赢自己的朴素基线，就没有证明增量价值）',br+'</table>');
+
+  let mr='<table><tr><th>周期(交易日)</th><th>IC</th><th>命中率</th><th>区间覆盖</th><th>名义覆盖</th><th>CRPS</th><th>方向性技能</th></tr>';
+  Object.keys(d.market).sort((a,c)=>a-c).forEach(k=>{const m=d.market[k];
+    const bad=(m.coverage!=null&&m.nominal_coverage&&m.coverage<m.nominal_coverage-0.05);
+    mr+=`<tr><td>${k}</td><td>${f3(m.ic)}</td><td>${f3(m.hit_rate)}</td>`+
+        `<td class="${bad?'err':''}">${f3(m.coverage)}</td><td>${f3(m.nominal_coverage)}</td>`+
+        `<td>${f3(m.crps)}</td><td>${sigCell(m.direction)}</td></tr>`;});
+  h+=card('大盘层 Market layer',mr+'</table>');
+
+  let ir='<table><tr><th>周期</th><th>截面 IC 均值</th><th>IC>0 占比</th><th>日数</th><th>IC 显著性</th><th>多空价差显著性</th></tr>';
+  Object.keys(d.industry).sort((a,c)=>a-c).forEach(k=>{const q=d.industry[k];
+    ir+=`<tr><td>${k}</td><td>${f3(q.mean_ic)}</td><td>${f3(q.pct_ic_positive)}</td><td>${q.n_dates}</td>`+
+        `<td>${sigCell(q.ic)}</td><td>${sigCell(q.long_short)}</td></tr>`;});
+  const per=(Object.values(d.industry)[0]||{}).per_industry||{};
+  const sorted=Object.entries(per).filter(([,v])=>v.ic!=null).sort((a,c)=>c[1].ic-a[1].ic);
+  if(sorted.length){
+    ir+='<div class="muted small" style="margin-top:8px">各行业 IC（正=排序方向正确，负=方向反了）：</div><div class="small" style="line-height:1.9">';
+    sorted.forEach(([n,v])=>{ir+=`<span style="display:inline-block;min-width:130px"><b style="color:${v.ic>0?'#17a7a2':'#e5534b'}">${f3(v.ic)}</b> ${n}</span>`;});
+    ir+='</div>';
+  }
+  h+=card('行业层 Industry layer（31 个申万一级行业的截面排序能力）',ir+'</table>');
+
+  // Idio + combined are keyed by horizon: the band now scales by sqrt(h) (D-HF-9), so this table
+  // is how we CONFIRM the scaling holds per horizon — a flat band would show ratios drifting with h.
+  const hs=Object.keys(d.idiosyncratic||{}).sort((a,b)=>a-b);
+  let dr='<table><tr><th>周期</th><th>基金</th><th>观测</th><th>残差波动</th><th>配置波动</th><th>比值</th><th>未映射权重</th><th>残差偏差</th></tr>';
+  hs.forEach(hk=>Object.entries(d.idiosyncratic[hk]).forEach(([f,v])=>{
+    const bad=(v.vol_ratio!=null&&v.vol_ratio>1.25);   // too narrow == over-confident == dangerous
+    dr+=`<tr><td>${hk}</td><td>${f}</td><td>${v.n_obs}</td><td>${f3(v.resid_std)}</td><td>${f3(v.configured_vol)}</td>`+
+        `<td class="${bad?'err':''}"><b>${f3(v.vol_ratio)}</b></td><td>${f3(v.unresolved_weight)}</td><td>${sigCell(v.bias)}</td></tr>`;}));
+  dr+='</table><div class="muted small" style="margin-top:6px">个股层的中心估计<b>按设计恒为 0</b>，因此它没有方向性指标（IC/命中率/夏普都会是凭空捏造）。它唯一诚实的考核是：<b>不确定性带是否覆盖了它该覆盖的残差</b>。比值 &gt;1.25 表示带太窄、系统过度自信（危险方向）。</div>';
+  h+=card('个股层 Idiosyncratic layer（中心估计为零，只考核不确定性标定）',dr);
+
+  const cb=d.combined||{};const chs=Object.keys(cb).sort((a,b)=>a-b);
+  if(chs.length){
+    let cr='<table><tr><th>周期</th><th>基金</th><th>观测</th><th>实际覆盖</th><th>名义覆盖</th><th>平均带宽</th><th>Winkler 分数</th><th>固定默认带(朴素)</th><th>结论</th></tr>';
+    chs.forEach(hk=>Object.entries(cb[hk]).forEach(([f,v])=>{
+      const lost=(v.winkler!=null&&v.winkler_default_band!=null&&v.winkler>v.winkler_default_band);
+      const narrow=(v.coverage!=null&&v.coverage<v.nominal_coverage-0.05);
+      cr+=`<tr><td>${hk}</td><td>${f}</td><td>${v.n_obs}</td>`+
+          `<td class="${narrow?'err':''}">${f3(v.coverage)}</td><td>${f3(v.nominal_coverage)}</td>`+
+          `<td>${f3(v.mean_width)}</td><td class="${lost?'err':''}">${f3(v.winkler)}</td>`+
+          `<td>${f3(v.winkler_default_band)}</td><td class="small">${v.note}</td></tr>`;}));
+    h+=card('合成区间 Combined interval（用户真正看到的 [ret_low, ret_high]；Winkler 越低越好）',cr+'</table>');
+  }
+
+  const bp=d.by_period||{};const yrs=Object.keys(bp).sort();
+  if(yrs.length){
+    let pr='<table><tr><th>年份</th><th>大盘 IC</th><th>大盘命中率</th><th>大盘区间覆盖</th><th>行业截面 IC</th><th>行业 IC>0 占比</th></tr>';
+    yrs.forEach(y=>{const v=bp[y];
+      pr+=`<tr><td>${y}</td><td>${f3(v.market.ic)}</td><td>${f3(v.market.hit_rate)}</td><td>${f3(v.market.coverage)}</td>`+
+          `<td>${f3(v.industry.mean_ic)}</td><td>${f3(v.industry.pct_ic_positive)}</td></tr>`;});
+    h+=card('逐年演化 Performance over time（h=20；看哪一层在什么时候坏掉）',pr+'</table>');
+  }
+  h+=`<div class="muted small">评估区间 ${d.grid.start} ~ ${d.grid.end}（${d.grid.n_dates} 个交易日，${d.grid.n_industries} 个行业）。所有读取均为点位口径（T 日 14:30 决策看不到当日 15:00 收盘）。</div>`;
+  $('#trLayerOut').innerHTML=h;
+}
+$('#trLayers').onclick=async()=>{
+  const btn=$('#trLayers');btn.disabled=true;const old=btn.textContent;btn.textContent='诊断中…（约 30 秒）';
+  try{renderLayers(await API('/tuning/layers'));}
+  catch(e){$('#trLayerOut').innerHTML=card('三层诊断失败',`<div class="err">${e.detail||e}</div>`);}
+  finally{btn.disabled=false;btn.textContent=old;}
+};
+
+// Prediction-vs-realized curves — the server renders each layer to a PNG (image/png), cached per
+// store signature. Auto-runs when training finishes (handleTrEvent 'done') and on the button.
+// A single <img> per layer does exactly one request; onload/onerror re-enable the control, so there
+// is no second fetch to race the render (that concurrent double-hit was what jammed it).
+async function loadTrCurves(force){
+  const btn=$('#trCurves');btn.disabled=true;const old=btn.textContent;btn.textContent='渲染中…（约数秒）';
+  const bust=Date.now();
+  const settle=()=>{const imgs=[...$('#trCurveOut').querySelectorAll('img')];
+    if(imgs.length&&imgs.every(i=>i.complete)){btn.disabled=false;btn.textContent=old;}};
+  const img=(layer,cap)=>`<figure style="margin:0 0 14px"><img src="/api/tuning/curves/${layer}?_=${bust}" `+
+    `alt="${cap}" style="width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff" `+
+    `onload="window._trCurveSettle&&window._trCurveSettle()" `+
+    `onerror="this.closest('figure').innerHTML='<div class=&quot;err&quot;>曲线渲染失败（${cap}），可点『预测 vs 真实 曲线』重试。</div>';window._trCurveSettle&&window._trCurveSettle()">`+
+    `<figcaption class="muted small" style="margin-top:4px">${cap}</figcaption></figure>`;
+  window._trCurveSettle=settle;
+  // Right after training, the server may still hold the tuning lock for a beat (config restore) and
+  // 409 the curves. Poll readiness once before drawing so the auto-run doesn't flash an error.
+  if(force){for(let k=0;k<8;k++){try{const r=await fetch(`/api/tuning/curves/market?_=${bust}`);
+    if(r.ok)break; }catch(e){} await new Promise(r=>setTimeout(r,700));}}
+  $('#trCurveOut').innerHTML=card('预测 vs 真实 曲线（点位口径；蓝=模型预测区间/中位，红=已实现）',
+    '<div class="muted small" style="margin-bottom:8px">覆盖率≈名义(80%) 表示区间标定合理；『中位 vs 真实 相关』接近 0 表示方向性无有效技能。图随当前生效配置更新。</div>'+
+    img('market','大盘模型：各周期 h=3/20/90，指数前瞻收益分布 vs 已实现')+
+    img('industry','行业模型：相关性最高/最低的行业，相对大盘偏离的预测 vs 已实现（h=20）'));
+  setTimeout(settle,15000);   // failsafe re-enable if an image never fires load/error
+}
+$('#trCurves').onclick=()=>loadTrCurves(true);
+
+// Feature importance + model-ladder benchmark (honest OOS). Shows features help VOLATILITY but not
+// DIRECTION — the evidence behind "no conditional mean adopted".
+async function loadTrBench(){
+  const btn=$('#trBench');btn.disabled=true;const old=btn.textContent;btn.textContent='基准测试中…（约 30 秒）';
+  try{
+    const d=await API('/tuning/benchmark?horizon=20');
+    const sig=x=>x.directional&&x.directional.significant?'<b>显著</b>':'不显著';
+    let dir='<table><tr><th>模型</th><th>能力</th><th>样本外 IC</th><th>方向显著性</th></tr>';
+    d.direction.forEach(x=>{dir+=`<tr><td>${x.model}</td><td class="small">${x.capacity}</td><td class="num">${f3(x.ic)}</td><td>${sig(x)}</td></tr>`;});
+    dir+='</table>';
+    let vol='<table><tr><th>模型</th><th>样本外相关(前瞻波动)</th></tr>';
+    d.volatility.forEach(x=>{vol+=`<tr><td>${x.model}</td><td class="num"><b>${f3(x.corr)}</b></td></tr>`;});
+    vol+='</table>';
+    const impTab=(rows,cap)=>{let h=`<div class="muted small" style="margin:6px 0 2px">${cap}</div><table><tr><th>特征</th><th>置换重要性(越大越有用)</th></tr>`;
+      rows.slice(0,8).forEach(r=>{const neg=r.importance!=null&&r.importance<0;h+=`<tr><td>${r.feature}</td><td class="num ${neg?'err':''}">${f3(r.importance)}</td></tr>`;});return h+'</table>';};
+    $('#trBenchOut').innerHTML=
+      card('模型基准 Model ladder（走步式样本外，重叠修正）',
+        '<div class="row"><div style="flex:1"><div class="muted small">方向（前瞻收益）</div>'+dir+'</div>'+
+        '<div style="flex:1"><div class="muted small">波动（前瞻已实现波动）</div>'+vol+'</div></div>'+
+        `<div class="muted small" style="margin-top:8px">${d.verdict}</div>`)+
+      card('逐特征重要性 Permutation importance（HGB，样本外）',
+        '<div class="row"><div style="flex:1">'+impTab(d.importance_direction,'方向目标：多为噪声（负值=置换后反而更好，说明该特征在拖累）')+'</div>'+
+        '<div style="flex:1">'+impTab(d.importance_volatility,'波动目标：趋势/波动类特征带来真实样本外信号')+'</div></div>');
+  }catch(e){$('#trBenchOut').innerHTML=card('基准测试失败',`<div class="err">${e.detail||e}</div>`);}
+  finally{btn.disabled=false;btn.textContent=old;}
+}
+$('#trBench').onclick=()=>loadTrBench();
+
+async function loadTsBench(){
+  const btn=$('#trTsBench');btn.disabled=true;const old=btn.textContent;btn.textContent='读取中…';
+  try{
+    const d=await API('/tuning/tsbench');
+    const horizons=Object.keys(d.horizons||{});
+    const kindZh={classical:'经典',ml:'ML',dl:'深度'};
+    let panels='';
+    horizons.forEach(H=>{
+      const rows=(d.horizons[H]||[]).slice().sort((a,b)=>{
+        const av=(a.dir_ic==null?-9:a.dir_ic),bv=(b.dir_ic==null?-9:b.dir_ic);return bv-av;});
+      const win=(d.winners&&d.winners[H]&&d.winners[H].length)?d.winners[H].join(', '):'无（NONE）';
+      let t=`<div class="muted small" style="margin:6px 0 2px">h=${H}　决策数 n=${rows[0]?rows[0].n:'—'}　跑赢基准：<b>${win}</b></div>`;
+      t+='<table><tr><th>模型</th><th>类</th><th>方向IC</th><th>命中率</th><th>误差比/基准</th><th>DM t</th><th>方向显著</th></tr>';
+      rows.forEach(r=>{
+        const worse=r.mse_ratio_vs_rw!=null&&r.mse_ratio_vs_rw>1;
+        const beat=r.beats_rw;
+        t+=`<tr${beat?' style="background:rgba(80,200,120,.12)"':''}><td>${r.name}</td><td class="small">${kindZh[r.kind]||r.kind}</td>`+
+           `<td class="num">${r.dir_ic==null?'—':f3(r.dir_ic)}</td>`+
+           `<td class="num">${r.hit_rate==null?'—':r.hit_rate.toFixed(2)}</td>`+
+           `<td class="num ${worse?'err':''}">${r.mse_ratio_vs_rw==null?'—':r.mse_ratio_vs_rw.toFixed(3)}</td>`+
+           `<td class="num">${r.dm_t==null||!isFinite(r.dm_t)?'—':f3(r.dm_t)}</td>`+
+           `<td>${r.dir_significant?'<b>显著</b>':'不显著'}</td></tr>`;
+      });
+      t+='</table>';
+      panels+=`<div style="flex:1;min-width:340px">${t}</div>`;
+    });
+    $('#trTsBenchOut').innerHTML=card(
+      `时间序列模型大比拼（${d.span}，${d.n_bars} 根K线，走步式样本外）`,
+      `<div class="row" style="flex-wrap:wrap;gap:18px">${panels}</div>`+
+      `<div class="muted small" style="margin-top:8px">${d.verdict}</div>`+
+      `<div class="muted small" style="margin-top:4px">口径：基准=历史均值漂移（Goyal–Welch）；『跑赢』需同时满足 DM t&gt;2（平方误差更低且显著）与方向重叠修正显著。绿色行=跑赢。误差比&gt;1（红）=比基准更差。</div>`);
+  }catch(e){
+    const msg=(e&&e.detail)?e.detail:(e||'');
+    $('#trTsBenchOut').innerHTML=card('时间序列大比拼',`<div class="err">${msg||'读取失败'}</div><div class="muted small">若未生成，请先运行 <code>scratchpad/run_ts_bench.py</code>。</div>`);
+  }
+  finally{btn.disabled=false;btn.textContent=old;}
+}
+$('#trTsBench').onclick=()=>loadTsBench();
+
+async function loadTrHistory(){
+  try{
+    const r=await API('/tuning/runs?limit=20');
+    if(!r.runs.length){$('#trHistory').innerHTML='';return;}
+    let rows='<table><tr><th>时间</th><th>记录 ID</th><th>验收</th><th>样本内/样本外相关</th><th>最优参数</th><th></th></tr>';
+    r.runs.forEach(x=>{
+      rows+=`<tr><td class="small">${x.created_at||''}</td><td class="small"><code>${x.run_id}</code></td>`+
+        `<td>${x.promotable?'<span class="pill up">可采用</span>':'<span class="pill down">不可采用</span>'}</td>`+
+        `<td class="num">${f3(x.rank_correlation)}</td>`+
+        `<td class="small">${x.best_params?Object.entries(x.best_params).map(([k,v])=>`${k.split('.').pop()}=${v}`).join(', '):'—'}</td>`+
+        `<td><button class="ghost small" data-run="${x.run_id}">查看</button></td></tr>`;
+    });
+    $('#trHistory').innerHTML=card('历史训练记录 Past runs（已持久化）',rows+'</table>');
+    $$('#trHistory [data-run]').forEach(btn=>btn.onclick=async()=>{
+      try{const run=await API('/tuning/runs/'+btn.dataset.run);trLastRun=run;renderTrResult(run);window.scrollTo({top:0});}
+      catch(e){alert('加载失败：'+(e.detail||e));}
+    });
+  }catch(e){$('#trHistory').innerHTML='';}
+}
+
+// ---- Models catalog -------------------------------------------------------
+let mdlData=null, mdlCat='all';
+const METHOD_ZH={baseline:'基线',rule:'规则门',derivation:'派生',artifact:'数据表',strategy:'回测策略'};
+const MODE_ZH={both:'分析+建议',analysis:'分析',advice:'建议',evaluation:'评测'};
+async function loadModels(){
+  $('#mdlOut').innerHTML='<div class="muted">载入中…</div>';
+  try{mdlData=await API('/models');renderChips();renderModels();}
+  catch(e){$('#mdlOut').innerHTML='<div class="err">'+(e.detail||e)+'</div>';}
+}
+$('#mdlReload').onclick=()=>{mdlData=null;loadModels();};
+$('#mdlSearch').addEventListener('input',()=>renderModels());
+function renderChips(){
+  const cats=mdlData.categories||[], counts=mdlData.counts||{};
+  let h=`<span class="chip ${mdlCat==='all'?'active':''}" data-cat="all">全部 ${mdlData.total}</span>`;
+  cats.forEach(c=>h+=`<span class="chip ${mdlCat===c?'active':''}" data-cat="${c}">${c} ${counts[c]||0}</span>`);
+  $('#mdlChips').innerHTML=h;
+  $$('#mdlChips .chip').forEach(ch=>ch.onclick=()=>{mdlCat=ch.dataset.cat;renderChips();renderModels();});
+}
+function badge(cls,txt){return `<span class="badge ${cls}">${txt}</span>`;}
+function renderModels(){
+  const q=$('#mdlSearch').value.trim().toLowerCase();
+  let list=mdlData.models.filter(m=>mdlCat==='all'||m.category===mdlCat);
+  if(q)list=list.filter(m=>(m.name_zh+m.name_en+m.summary+m.id).toLowerCase().includes(q));
+  if(!list.length){$('#mdlOut').innerHTML='<div class="muted">无匹配模型。</div>';return;}
+  let h='';
+  (mdlData.categories||[]).forEach(cat=>{
+    const items=list.filter(m=>m.category===cat);if(!items.length)return;
+    h+=`<div class="mdl-cat">${cat}<span class="n">${items.length}</span></div><div class="grid">`;
+    items.forEach(m=>{
+      const st=(m.status||'').toLowerCase();
+      let inner=`<h3>${m.name_zh}<span class="en">${m.name_en}</span></h3>`+
+        badge('method',METHOD_ZH[m.method]||m.method)+badge(st,m.status)+badge('mode',MODE_ZH[m.mode]||m.mode)+
+        `<p class="small" style="margin:8px 0 0">${m.summary||''}</p>`+
+        `<div class="ref">${m.module} · ${m.doc_ref||''}</div>`;
+      const p=m.params;
+      if(p&&Object.keys(p).length){
+        inner+=`<details class="params"><summary>参数 (${m.config_group}) · ${Object.keys(p).length}</summary>`+
+          Object.entries(p).map(([k,v])=>kv(k,fmtParam(v))).join('')+`</details>`;
+      }
+      if(m.candidates&&m.candidates.length)
+        inner+=`<div class="cand">候选/延期：${m.candidates.join('；')}</div>`;
+      h+=`<div class="card mdl-card">${inner}</div>`;
+    });
+    h+='</div>';
+  });
+  $('#mdlOut').innerHTML=h;
+}
+function fmtParam(v){
+  if(Array.isArray(v))return v.join(', ');
+  if(v&&typeof v==='object')return JSON.stringify(v);
+  if(typeof v==='number'&&!Number.isInteger(v))return (+v).toString();
+  return v==null?'—':v;
+}
+
+$$('[data-doc]').forEach(b=>b.onclick=async()=>{
+  $('#docOut').textContent='载入中…';
+  try{const r=await API('/'+b.dataset.doc);$('#docOut').textContent=r.markdown||r.content||JSON.stringify(r,null,2);}
+  catch(e){$('#docOut').textContent='错误：'+e;}
+});
+</script>
+</body>
+</html>

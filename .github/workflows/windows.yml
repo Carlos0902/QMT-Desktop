@@ -1,0 +1,43 @@
+name: Windows installer
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          architecture: x64
+      - uses: astral-sh/setup-uv@v6
+      - name: Build self-contained Windows installer
+        run: ./packaging/windows.ps1
+      - name: Install and verify desktop, credential store and MCP
+        shell: pwsh
+        run: |
+          $install = Join-Path $env:RUNNER_TEMP 'QMT 测试 Desktop'
+          $exe = (Get-ChildItem dist/*.exe).FullName
+          $process = Start-Process $exe -ArgumentList @('/VERYSILENT','/NORESTART','/SUPPRESSMSGBOXES',("/DIR=`"$install`"")) -PassThru -Wait
+          if ($process.ExitCode) { throw "Installer exit $($process.ExitCode)" }
+          $site = Join-Path $install 'runtime/Lib/site-packages/qmt'
+          if ((Get-ChildItem "$site/controlplane/static" -File).Count -ne 1) { throw 'Unexpected static documents' }
+          $script = (Resolve-Path tests/windows_smoke.py).Path
+          & "$install/runtime/python.exe" -I -X utf8 $script
+          if ($LASTEXITCODE) { throw 'Installed application smoke test failed.' }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $exe -Leaf)" | Set-Content -Encoding ascii dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: dist/*
+          retention-days: 7

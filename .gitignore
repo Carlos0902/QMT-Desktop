@@ -1,0 +1,40 @@
+# --- secrets / local env ---
+.env
+
+# --- python ---
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# --- data / cache ---
+/data_cache/
+*.parquet
+
+# --- techdesign LaTeX build artifacts ---
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.xdv
+*.toc
+*.out
+
+# --- OS ---
+.DS_Store
+/artifacts/
+/tmp/
+/release-download/
+/dist-windows/
+/.test-env/
+*.pem
+*.key
+*.pfx
+portfolio-report-*.html
