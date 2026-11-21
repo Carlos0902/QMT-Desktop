@@ -25,7 +25,7 @@ foreach ($subdir in 'Scripts','bin') {
 }
 Get-ChildItem $runtime -Recurse -Directory -Filter __pycache__ | Sort-Object FullName -Descending | Remove-Item -Recurse -Force
 $csc = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-& $csc /nologo /target:winexe /platform:x64 /reference:System.Windows.Forms.dll "/out:$stage/QMT Desktop.exe" desktop/Launcher.cs
+& $csc /nologo /target:winexe /platform:x64 /reference:System.Windows.Forms.dll "/out:$stage/QMT Desktop.exe" (Resolve-Path desktop/Launcher.cs).Path
 if ($LASTEXITCODE) { throw 'Desktop launcher compilation failed.' }
 $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
 & $iscc packaging/windows.iss

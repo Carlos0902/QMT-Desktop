@@ -216,6 +216,8 @@ class TushareClient:
         TushareError
             A network/transport failure that persisted across all retries.
         """
+        if not self.has_token:
+            raise TushareError("请先配置 Tushare Pro Key。")
         # Tushare's HTTP API expects ``fields`` as a comma-separated STRING (its canonical
         # form). A str is itself a Sequence[str], so ``list(fields)`` would explode
         # "ts_code,name" into single characters; Tushare then silently ignores the

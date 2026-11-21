@@ -49,8 +49,8 @@ def fund_nav(fund_code: str, start: date, end: date) -> dict:
 def analyze_cached_fund(fund_code: str, as_of: date) -> dict:
     """Analyze a cached fund as of a date. Use Desktop's analysis page to fetch data first."""
     from fastapi.testclient import TestClient
-    from qmt.controlplane.api import app
-    with TestClient(app) as client:
+    from qmt.controlplane.api import create_app
+    with TestClient(create_app()) as client:
         result = client.post("/api/analyze", json={"fund_code": _code(fund_code),
                              "as_of": as_of.isoformat(), "ingest": False})
     if result.status_code != 200:

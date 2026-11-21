@@ -31,6 +31,15 @@ async def check_mcp():
         assert not json.loads(status.content[0].text)["configured"]
         denied = await client.call_tool("fund_nav", {"fund_code": "000001", "start": "2024-01-01", "end": "2024-01-31"})
         assert denied.isError
+        from datetime import datetime
+        from qmt.pit import PointInTimeStore
+        store = PointInTimeStore(desktop_profile.configure())
+        store.put("fund_basic", [{"fund_code": "010001", "name": "CI Synthetic", "market": "O",
+            "fund_type": "股票型", "invest_type": "普通股票型", "available_at": datetime(2020, 1, 1)}])
+        analyzed = await client.call_tool("analyze_cached_fund", {"fund_code": "010001", "as_of": "2024-01-31"})
+        assert not analyzed.isError, analyzed.content
+        assert json.loads(analyzed.content[0].text)["fund_code"] == "010001"
+
 
 
 def check_dashboard():
@@ -49,7 +58,7 @@ def check_dashboard():
             time.sleep(.5)
     assert "QMT" in urlopen(url).read().decode()
     assert urlopen(url + "/api/decisions").status == 200
-    assert json.load(urlopen(url + "/api/funds"))["count"] == 0
+    assert json.load(urlopen(url + "/api/funds?query=010001"))["count"] == 1
     try:
         urlopen(Request(url, headers={"Origin": "https://example.org"}))
     except HTTPError as error:
