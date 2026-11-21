@@ -26,7 +26,8 @@ def read_key():
         if exc.winerror == 1168:
             return ""
         raise
-    return record["CredentialBlob"].decode("utf-16-le")
+    blob = record["CredentialBlob"]
+    return blob if isinstance(blob, str) else blob.decode("utf-16-le")
 
 
 def save_key(value):
@@ -36,7 +37,7 @@ def save_key(value):
         raise ValueError("请输入有效的 Tushare Pro Key。")
     win32cred.CredWrite({
         "Type": win32cred.CRED_TYPE_GENERIC, "TargetName": CREDENTIAL,
-        "CredentialBlob": value.encode("utf-16-le"),
+        "CredentialBlob": value,
         "Persist": win32cred.CRED_PERSIST_LOCAL_MACHINE,
     }, 0)
 
